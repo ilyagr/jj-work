@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.53", features = ["derive", "wrap_help"] }
-duct = "1.1.1"
+xshell = "0.2.7"

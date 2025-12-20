@@ -1,5 +1,5 @@
-use duct::cmd;
 use std::path::PathBuf;
+use xshell::{Shell, cmd};
 
 // TODO repo-run
 
@@ -14,15 +14,12 @@ struct Environment {
 }
 
 impl Environment {
-    fn new_from_cwd() -> anyhow::Result<Self> {
-        let current_dir = std::env::current_dir()?;
-        // TODO: Non-UTF-8? TODO: Mention failure to run jj in error messages.
-        // TODO: print stderr on error? Or does this already happen?
-        let workspace_root: PathBuf = cmd!("jj", "workspace", "root").read()?.trim().into();
+    fn new(sh: &Shell) -> anyhow::Result<Self> {
+        // TODO: Non-UTF-8?
+        let workspace_root: PathBuf = cmd!(sh, "jj workspace root").read()?.into();
 
         // This is normally `repo_root/.jj/repo/config.toml`.
-        let repo_config_file: PathBuf =
-            cmd!("jj", "config", "path", "--repo").read()?.trim().into();
+        let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo").read()?.into();
         // TODO: Maybe better to put a file with path to repo in the workspaces dir? Then, jjw could work in that dir as well.
         let repo_root = repo_config_file
             .parent()
@@ -47,7 +44,7 @@ impl Environment {
             .transpose()?;
 
         Ok(Self {
-            current_dir,
+            current_dir: sh.current_dir(),
             repo_root,
             workspace_root,
             workspace_name,
@@ -56,6 +53,7 @@ impl Environment {
 }
 
 fn main() {
-    let env = Environment::new_from_cwd().unwrap();
+    let sh = Shell::new().unwrap();
+    let env = Environment::new(&sh).unwrap();
     eprintln!("{:#?}", env);
 }
