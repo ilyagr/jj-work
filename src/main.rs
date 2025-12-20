@@ -1,6 +1,7 @@
 use duct::cmd;
-use std::fs;
 use std::path::PathBuf;
+
+// TODO repo-run
 
 #[derive(Clone, Debug)]
 struct Environment {
@@ -15,26 +16,35 @@ struct Environment {
 impl Environment {
     fn new_from_cwd() -> anyhow::Result<Self> {
         let current_dir = std::env::current_dir()?;
-        // TODO: Non-UTF-8?
+        // TODO: Non-UTF-8? TODO: Mention failure to run jj in error messages.
+        // TODO: print stderr on error? Or does this already happen?
         let workspace_root: PathBuf = cmd!("jj", "workspace", "root").read()?.trim().into();
-        let dot_jj = workspace_root.join(".jj");
 
-        let (repo_root, workspace_name) = if fs::metadata(&dot_jj)?.is_dir() {
-            (workspace_root.clone(), None)
-        } else {
-            (
-                fs::read_to_string(&dot_jj)?.trim().into(),
-                Some(
-                    workspace_root
-                        .file_name()
-                        .and_then(|os_str| os_str.to_str())
-                        .ok_or(anyhow::anyhow!(
-                            "Couldn't determine workspace name from path {workspace_root:?}"
-                        ))?
-                        .to_string(),
-                ),
-            )
-        };
+        // This is normally `repo_root/.jj/repo/config.toml`.
+        let repo_config_file: PathBuf =
+            cmd!("jj", "config", "path", "--repo").read()?.trim().into();
+        // TODO: Maybe better to put a file with path to repo in the workspaces dir? Then, jjw could work in that dir as well.
+        let repo_root = repo_config_file
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+            .ok_or(anyhow::anyhow!(
+                "Couldn't determine repo root from config file path {:?}",
+                &repo_config_file
+            ))?
+            .to_path_buf();
+
+        let workspace_name = (repo_root != workspace_root)
+            .then(|| {
+                workspace_root
+                    .file_name()
+                    .and_then(|os_str| os_str.to_str())
+                    .ok_or(anyhow::anyhow!(
+                        "Couldn't determine workspace name from path {workspace_root:?}"
+                    ))
+                    .map(|s| s.to_string())
+            })
+            .transpose()?;
 
         Ok(Self {
             current_dir,
