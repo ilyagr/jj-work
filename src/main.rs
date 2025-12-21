@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use jw::settings;
 use std::{path::PathBuf, process};
 use xshell::{Shell, cmd};
 
@@ -128,6 +129,7 @@ impl Environment {
 
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new().unwrap();
+    eprintln!("{:#?}", settings::Settings::new(&sh)?);
     let mut env = Environment::new(&sh).unwrap();
     eprintln!("{:#?}", env);
     match Cli::try_parse() {
