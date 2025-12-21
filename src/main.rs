@@ -1,7 +1,39 @@
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use xshell::{Shell, cmd};
 
 // TODO repo-run
+
+#[derive(Parser, Debug)]
+#[command(name = "jw")]
+#[command(about = "Jujutsu workspace manager", long_about = None)]
+struct Cli {
+    /// Optional path to vault where new workspaces are created and looked for
+    ///
+    /// There can be multiple vaults anywhere in the filesystem.
+    // TODO: If not specified... When and whether gitignore is created in it.
+    // TODO: One repo per vault? Non-workspace dirs in vault? (Maybe OK if they don't have .jj)
+    // TODO: Probably a list of repo-relative vaults in config, but CLI option is relative to CWD.
+    #[arg(long, global = true)]
+    vault: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Add a new workspace
+    Add {
+        /// Name of the workspace to add
+        workspace_name: String,
+    },
+    /// Switch to a workspace
+    Switch {
+        /// Name of the workspace to switch to
+        workspace_name: String,
+    },
+}
 
 #[derive(Clone, Debug)]
 struct Environment {
@@ -53,6 +85,26 @@ impl Environment {
 }
 
 fn main() {
+    match Cli::try_parse() {
+        Ok(cli) => eprintln!("{:#?}", cli),
+        Err(e)
+            if matches!(
+                e.kind(),
+                clap::error::ErrorKind::DisplayHelp
+                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            ) =>
+        {
+            e.print().unwrap();
+            std::process::exit(0);
+        }
+        Err(e) => {
+            let mut descr = e.kind().to_string();
+            if descr.is_empty() {
+                descr = format!("{:?}", e.kind());
+            }
+            eprintln!("clap: {}", descr)
+        }
+    }
     let sh = Shell::new().unwrap();
     let env = Environment::new(&sh).unwrap();
     eprintln!("{:#?}", env);
