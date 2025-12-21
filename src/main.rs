@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::{path::PathBuf, process};
 use xshell::{Shell, cmd};
 
 // TODO repo-run
@@ -30,7 +30,7 @@ enum Commands {
         // TODO: Revision, sparse patterns
     },
     /// Switch to a workspace
-    Switch {
+    Path {
         /// Name of the workspace to switch to
         workspace_name: String,
     },
@@ -96,7 +96,11 @@ impl Environment {
         Ok(sh)
     }
 
-    fn create_workspace(&mut self, name: String) -> anyhow::Result<()> {
+    fn path(&self, name: &str) -> PathBuf {
+        self.vault_dir().join(name)
+    }
+
+    fn create_workspace(&mut self, name: &str) -> anyhow::Result<()> {
         let sh = self.repo_shell()?;
         sh.create_dir(self.vault_dir())?;
         let workspace_path = self.vault_dir().join(name);
@@ -126,9 +130,12 @@ fn main() -> anyhow::Result<()> {
     eprintln!("{:#?}", env);
     match Cli::try_parse() {
         Ok(cli) => match cli.command {
-            Commands::Add { workspace_name } => env.create_workspace(workspace_name)?,
-            //Commands::Switch { workspace_name } => todo!(),
-            _ => eprintln!("Unimplemented: {:#?}", cli),
+            Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
+            Commands::Path { workspace_name } => {
+                let path = env.path(&workspace_name);
+                println!("{}", path.display());
+                process::exit(0);
+            } // _ => eprintln!("Unimplemented: {:#?}", cli),
         },
         Err(e)
             if matches!(
@@ -138,7 +145,7 @@ fn main() -> anyhow::Result<()> {
             ) =>
         {
             e.print().unwrap();
-            std::process::exit(0);
+            process::exit(0);
         }
         Err(e) => {
             let mut descr = e.kind().to_string();
