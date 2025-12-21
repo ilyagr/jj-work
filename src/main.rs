@@ -14,8 +14,8 @@ struct Cli {
     // TODO: If not specified... When and whether gitignore is created in it.
     // TODO: One repo per vault? Non-workspace dirs in vault? (Maybe OK if they don't have .jj)
     // TODO: Probably a list of repo-relative vaults in config, but CLI option is relative to CWD.
-    #[arg(long, global = true)]
-    vault: Option<PathBuf>,
+    // #[arg(long, global = true)]
+    // vault: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Commands,
@@ -27,6 +27,7 @@ enum Commands {
     Add {
         /// Name of the workspace to add
         workspace_name: String,
+        // TODO: Revision, sparse patterns
     },
     /// Switch to a workspace
     Switch {
@@ -82,11 +83,53 @@ impl Environment {
             workspace_name,
         })
     }
+
+    fn vault_dir(&self) -> PathBuf {
+        // Or _workspaces/ .jj/workspaces-jw/, or ../{repo_name}_workspaces
+        // TODO: Git commands still work?
+        self.repo_root.join(".jj/jw-workspaces")
+    }
+
+    fn repo_shell(&self) -> anyhow::Result<Shell> {
+        let sh = Shell::new()?;
+        sh.change_dir(&self.repo_root);
+        Ok(sh)
+    }
+
+    fn create_workspace(&mut self, name: String) -> anyhow::Result<()> {
+        let sh = self.repo_shell()?;
+        sh.create_dir(self.vault_dir())?;
+        let workspace_path = self.vault_dir().join(name);
+        // TODO: Test
+        cmd!(sh, "jj workspace add {workspace_path}").run()?;
+        // TODO: Check gitignores?
+        for need_symlink in ["target", "_ilyagrignore", "node_modules"] {
+            // TODO: Windows
+            std::os::unix::fs::symlink(
+                self.repo_root.join(need_symlink),
+                workspace_path.join(need_symlink),
+            )?;
+        }
+        // TODO: update_stale options?
+        // TODO: `echo "gitdir: /dev/null" > .git`` if colocated, or is this jj's job?
+        // See also GIT_CEILING_DIRECTIORIES, https://stackoverflow.com/questions/27177248/how-can-i-make-git-work-only-on-the-current-directory
+        // jj discussion on making co-located workspaces work with git
+        Ok(())
+    }
+
+    // TODO: Delete workspace, really belongs to `jj`. Set sparse pattern to `!*`, then figure out ignore files.
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
+    let sh = Shell::new().unwrap();
+    let mut env = Environment::new(&sh).unwrap();
+    eprintln!("{:#?}", env);
     match Cli::try_parse() {
-        Ok(cli) => eprintln!("{:#?}", cli),
+        Ok(cli) => match cli.command {
+            Commands::Add { workspace_name } => env.create_workspace(workspace_name)?,
+            //Commands::Switch { workspace_name } => todo!(),
+            _ => eprintln!("Unimplemented: {:#?}", cli),
+        },
         Err(e)
             if matches!(
                 e.kind(),
@@ -104,8 +147,6 @@ fn main() {
             }
             eprintln!("clap: {}", descr)
         }
-    }
-    let sh = Shell::new().unwrap();
-    let env = Environment::new(&sh).unwrap();
-    eprintln!("{:#?}", env);
+    };
+    Ok(())
 }
