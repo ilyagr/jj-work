@@ -33,6 +33,8 @@ enum Commands {
     Path {
         /// Name of the workspace to switch to
         workspace_name: String,
+        #[arg(long)]
+        allow_missing: bool,
     },
 }
 
@@ -131,7 +133,10 @@ fn main() -> anyhow::Result<()> {
     match Cli::try_parse() {
         Ok(cli) => match cli.command {
             Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
-            Commands::Path { workspace_name } => {
+            Commands::Path {
+                workspace_name,
+                allow_missing,
+            } => {
                 let path = env.path(&workspace_name);
                 println!("{}", path.display());
                 process::exit(0);
