@@ -27,8 +27,9 @@ const JJ_CONFIG_KEY: &str = "x.jw";
 
 impl Settings {
     pub fn new(sh: &Shell) -> Result<Self, SettingsError> {
-        // TODO: --allow-empty, test
-        let jj_config = cmd!(sh, "jj config get {JJ_CONFIG_KEY}")
+        // TODO: test
+        // TODO(https://github.com/jj-vcs/jj/pull/8379): Will this work with upstream jj?
+        let jj_config = cmd!(sh, "jj config get --allow-missing {JJ_CONFIG_KEY}")
             .read()
             .unwrap_or_default();
         let s = Config::builder()
