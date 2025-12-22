@@ -35,18 +35,18 @@ enum Commands {
         /// Name of the workspace to switch to
         workspace_name: String,
         #[arg(long)]
-        allow_missing: bool,
+        _allow_missing: bool,
     },
 }
 
 #[derive(Clone, Debug)]
 struct Environment {
-    current_dir: PathBuf,
+    _current_dir: PathBuf,
     repo_root: PathBuf,
-    workspace_root: PathBuf,
+    _workspace_root: PathBuf,
     // workspaces_dir: PathBuf,
     // repo_config_file: PathBuf,
-    workspace_name: Option<String>,
+    _workspace_name: Option<String>,
 }
 
 impl Environment {
@@ -80,10 +80,10 @@ impl Environment {
             .transpose()?;
 
         Ok(Self {
-            current_dir: sh.current_dir(),
+            _current_dir: sh.current_dir(),
             repo_root,
-            workspace_root,
-            workspace_name,
+            _workspace_root: workspace_root,
+            _workspace_name: workspace_name,
         })
     }
 
@@ -137,7 +137,7 @@ fn main() -> anyhow::Result<()> {
             Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
             Commands::Path {
                 workspace_name,
-                allow_missing,
+                _allow_missing,
             } => {
                 let path = env.path(&workspace_name);
                 println!("{}", path.display());
