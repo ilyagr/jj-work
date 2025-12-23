@@ -208,7 +208,7 @@ fn main() -> anyhow::Result<()> {
 
     let sh = Shell::new().unwrap();
     let config = Settings::new(&sh)?;
-    let mut env = Environment::new(&sh, config.clone()).unwrap();
+    let mut env = Environment::new(&sh, config.clone())?;
     match cli.command {
         Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
         Commands::Path {
