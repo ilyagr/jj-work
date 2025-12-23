@@ -27,11 +27,16 @@ const JJ_CONFIG_KEY: &str = "x.jw";
 
 impl Settings {
     pub fn new(sh: &Shell) -> Result<Self, SettingsError> {
-        // TODO: test
-        // TODO(https://github.com/jj-vcs/jj/pull/8379): Will this work with upstream jj?
-        let jj_config = cmd!(sh, "jj config get --allow-missing {JJ_CONFIG_KEY}")
-            .read()
-            .unwrap_or_default();
+        // TODO: test As discussed in https://github.com/jj-vcs/jj/pull/8379,
+        // this is one way to get a config key as valid TOML.
+        let template = r#"name ++ "=" ++ value ++ "\n""#;
+        let jj_config = cmd!(
+            sh,
+            "jj config list --include-defaults -T {template} --color=never {JJ_CONFIG_KEY}"
+        )
+        .ignore_stderr()
+        .read()
+        .unwrap_or_default();
         let s = Config::builder()
             // Start off by merging in the "default" configuration file
             .add_source(File::from_str(
