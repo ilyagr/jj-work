@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use jw::settings;
+use jw::settings::Settings;
 use std::{path::PathBuf, process};
 use xshell::{Shell, cmd};
 
@@ -41,6 +41,7 @@ enum Commands {
 
 #[derive(Clone, Debug)]
 struct Environment {
+    config: Settings,
     _current_dir: PathBuf,
     repo_root: PathBuf,
     _workspace_root: PathBuf,
@@ -50,7 +51,7 @@ struct Environment {
 }
 
 impl Environment {
-    fn new(sh: &Shell) -> anyhow::Result<Self> {
+    fn new(sh: &Shell, config: Settings) -> anyhow::Result<Self> {
         // TODO: Non-UTF-8?
         let workspace_root: PathBuf = cmd!(sh, "jj workspace root").read()?.into();
 
@@ -80,6 +81,7 @@ impl Environment {
             .transpose()?;
 
         Ok(Self {
+            config,
             _current_dir: sh.current_dir(),
             repo_root,
             _workspace_root: workspace_root,
@@ -90,7 +92,7 @@ impl Environment {
     fn vault_dir(&self) -> PathBuf {
         // Or _workspaces/ .jj/workspaces-jw/, or ../{repo_name}_workspaces
         // TODO: Git commands still work?
-        self.repo_root.join(".jj/jw-workspaces")
+        self.config.vault_dir.clone()
     }
 
     fn repo_shell(&self) -> anyhow::Result<Shell> {
@@ -110,7 +112,7 @@ impl Environment {
         // TODO: Test
         cmd!(sh, "jj workspace add {workspace_path}").run()?;
         // TODO: Check gitignores?
-        for need_symlink in ["target", "_ilyagrignore", "node_modules"] {
+        for need_symlink in self.config.paths_to_symlink.iter() {
             // TODO: Windows
             std::os::unix::fs::symlink(
                 self.repo_root.join(need_symlink),
@@ -129,8 +131,9 @@ impl Environment {
 
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new().unwrap();
-    eprintln!("{:#?}", settings::Settings::new(&sh)?);
-    let mut env = Environment::new(&sh).unwrap();
+    let config = Settings::new(&sh)?;
+    eprintln!("{:#?}", config);
+    let mut env = Environment::new(&sh, config).unwrap();
     eprintln!("{:#?}", env);
     match Cli::try_parse() {
         Ok(cli) => match cli.command {
