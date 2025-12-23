@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use jw::settings::Settings;
-use std::{path::PathBuf, process};
+use std::path::PathBuf;
 use xshell::{Shell, cmd};
 
 // TODO repo-run
@@ -37,6 +37,8 @@ enum Commands {
         #[arg(long)]
         _allow_missing: bool,
     },
+    /// Print config and environment debug info
+    Debug,
 }
 
 #[derive(Clone, Debug)]
@@ -132,37 +134,19 @@ impl Environment {
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new().unwrap();
     let config = Settings::new(&sh)?;
-    eprintln!("{:#?}", config);
-    let mut env = Environment::new(&sh, config).unwrap();
-    eprintln!("{:#?}", env);
-    match Cli::try_parse() {
-        Ok(cli) => match cli.command {
-            Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
-            Commands::Path {
-                workspace_name,
-                _allow_missing,
-            } => {
-                let path = env.path(&workspace_name);
-                println!("{}", path.display());
-                process::exit(0);
-            } // _ => eprintln!("Unimplemented: {:#?}", cli),
-        },
-        Err(e)
-            if matches!(
-                e.kind(),
-                clap::error::ErrorKind::DisplayHelp
-                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
-            ) =>
-        {
-            e.print().unwrap();
-            process::exit(0);
+    let mut env = Environment::new(&sh, config.clone()).unwrap();
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
+        Commands::Path {
+            workspace_name,
+            _allow_missing,
+        } => {
+            let path = env.path(&workspace_name);
+            println!("{}", path.display());
         }
-        Err(e) => {
-            let mut descr = e.kind().to_string();
-            if descr.is_empty() {
-                descr = format!("{:?}", e.kind());
-            }
-            eprintln!("clap: {}", descr)
+        Commands::Debug => {
+            println!("{:#?}", env);
         }
     };
     Ok(())
