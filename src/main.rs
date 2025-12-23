@@ -37,6 +37,11 @@ enum Commands {
         #[arg(long)]
         allow_missing: bool,
     },
+    /// List valid workspaces in the vault
+    ///
+    /// This should be a subset of workspaces that `jj workspace list` would
+    /// show, since we only show the workspaces in the vault.
+    List,
     /// Print config and environment debug info
     Debug,
 }
@@ -152,6 +157,21 @@ impl Environment {
         Ok(workspace_root == self.repo_root)
     }
 
+    fn list_workspaces(&self) -> anyhow::Result<Vec<String>> {
+        let sh = self.repo_shell()?;
+        Ok(sh
+            .read_dir(self.vault_dir())?
+            .into_iter()
+            .filter_map(|entry| {
+                entry
+                    .file_name()
+                    .and_then(|os_str| os_str.to_str())
+                    .map(|s| s.to_string())
+            })
+            .filter(|name| self.is_valid_workspace(name).unwrap_or(false))
+            .collect())
+    }
+
     // TODO: Delete workspace, really belongs to `jj`. Set sparse pattern to `!*`, then figure out ignore files.
 }
 
@@ -174,6 +194,11 @@ fn main() -> anyhow::Result<()> {
             }
             let path = env.path(&workspace_name);
             println!("{}", path.display());
+        }
+        Commands::List => {
+            for workspace_name in env.list_workspaces()? {
+                println!("{}", workspace_name);
+            }
         }
         Commands::Debug => {
             println!("{:#?}", env);
