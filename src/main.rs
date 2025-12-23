@@ -1,6 +1,9 @@
 use clap::{Parser, Subcommand};
 use jj_work::settings::Settings;
-use std::path::PathBuf;
+use std::{
+    io::{Write, stderr},
+    path::PathBuf,
+};
 use xshell::{Shell, cmd};
 
 // TODO repo-run
@@ -26,13 +29,18 @@ struct Cli {
 enum Commands {
     /// Add a new workspace
     Add {
-        /// Name of the workspace to add
         workspace_name: String,
         /// Passed to `jj workspace add`, see its help for details
         #[arg(long, short, value_name = "REVSETS")]
         revision: Vec<String>,
         // TODO: sparse patterns
     },
+    /// Remove a workspace, trying to do it safely
+    ///
+    /// Will not remove the workspace dir. Will remove any files tracked by `jj`
+    /// the `.jj` dir, and any symlinks `jj-work add` would create.
+    // TODO: Record symlinks actually created so that we can delete the right ones
+    Delete { workspace_name: String },
     /// Retrun the path to a workspace or to the repo root
     Path {
         /// Name of the workspace to switch to
@@ -189,6 +197,51 @@ impl Environment {
         Ok(())
     }
 
+    fn delete_workspace(&mut self, name: &str) -> anyhow::Result<()> {
+        if !self.is_valid_workspace(name)? {
+            return Err(anyhow::anyhow!(
+                "Workspace '{name}' does not exist or is invalid",
+            ));
+        }
+        let sh = self.workspace_shell(name)?;
+
+        let output = cmd!(sh, "jj workspace update-stale").output()?;
+        // We want to suppress the output unless there is an error
+        if !output.status.success() {
+            let _ = stderr().write_all(&output.stdout); // Likely empty
+            let _ = stderr().write_all(&output.stderr);
+            // TODO: Do we want: let _ = stderr().write_all(b"\n");
+            return Err(anyhow::anyhow!(
+                "`jj workspace update-stale` failed with exit code {:?}",
+                output.status.code()
+            ));
+        }
+
+        cmd!(sh, "jj sparse set --clear").run()?;
+        cmd!(sh, "jj workspace forget {name}").run()?;
+        if sh.path_exists(".jj") {
+            // eprintln!("Would remove: {:?}", sh.read_dir(".jj")?);
+            sh.remove_path(".jj")?;
+        }
+
+        for symlink_to_remove in self.config.paths_to_symlink.iter() {
+            let full_path = sh.current_dir().join(symlink_to_remove);
+            match std::fs::read_link(&full_path) {
+                Ok(target) if target == self.repo_root.join(symlink_to_remove) => {
+                    // https://github.com/matklad/xshell/issues/106:
+                    // `sh.remove_path(symlink_to_remove)?` doesn't work on
+                    // symlinks that don't point to existing files
+                    std::fs::remove_file(full_path)?;
+                }
+                _ => {
+                    // TODO: Log error
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn is_valid_workspace(&self, name: &str) -> anyhow::Result<bool> {
         // TODO: Create `jj workspace name`, then we can compare `jj workspace name` with the dir name and error if they are different.
         // (We probably won't support `jj workspace add --name`)
@@ -217,8 +270,6 @@ impl Environment {
             .filter(|name| self.is_valid_workspace(name).unwrap_or(false))
             .collect())
     }
-
-    // TODO: Delete workspace, really belongs to `jj`. Set sparse pattern to `!*`, then figure out ignore files.
 }
 
 fn main() -> anyhow::Result<()> {
@@ -242,6 +293,7 @@ fn main() -> anyhow::Result<()> {
             workspace_name,
             revision,
         } => env.create_workspace(&workspace_name, revision)?,
+        Commands::Delete { workspace_name } => env.delete_workspace(&workspace_name)?,
         Commands::Path {
             workspace_name: None,
             ..
