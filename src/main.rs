@@ -30,10 +30,12 @@ enum Commands {
         workspace_name: String,
         // TODO: Revision, sparse patterns
     },
-    /// Switch to a workspace
+    /// Retrun the path to a workspace or to the repo root
     Path {
         /// Name of the workspace to switch to
-        workspace_name: String,
+        ///
+        /// If not specified, returns the path to the repo root.
+        workspace_name: Option<String>,
         #[arg(long)]
         allow_missing: bool,
     },
@@ -182,16 +184,21 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
         Commands::Path {
-            workspace_name,
+            workspace_name: None,
+            allow_missing: _,
+        } => {
+            println!("{}", env.repo_root.display())
+        }
+        Commands::Path {
+            workspace_name: Some(name),
             allow_missing,
         } => {
-            if !allow_missing && !env.is_valid_workspace(&workspace_name)? {
+            if !allow_missing && !env.is_valid_workspace(&name)? {
                 return Err(anyhow::anyhow!(
-                    "Workspace '{}' does not exist or is invalid",
-                    workspace_name
+                    "Workspace '{name}' does not exist or is invalid"
                 ));
             }
-            let path = env.path(&workspace_name);
+            let path = env.path(&name);
             println!("{}", path.display());
         }
         Commands::List => {
