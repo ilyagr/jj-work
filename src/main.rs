@@ -103,7 +103,7 @@ impl Environment {
 
     fn vault_dir(&self) -> PathBuf {
         // TODO: Git commands still work?
-        self.config.vault_dir.clone()
+        self.repo_root.join(&self.config.vault_dir)
     }
 
     fn repo_shell(&self) -> anyhow::Result<Shell> {
