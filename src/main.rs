@@ -38,6 +38,8 @@ enum Commands {
         workspace_name: Option<String>,
         #[arg(long)]
         allow_missing: bool,
+        #[arg(long, short, conflicts_with = "allow_missing")]
+        create_if_missing: bool,
     },
     /// List valid workspaces in the vault
     ///
@@ -213,18 +215,23 @@ fn main() -> anyhow::Result<()> {
         Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
         Commands::Path {
             workspace_name: None,
-            allow_missing: _,
+            ..
         } => {
             println!("{}", env.repo_root.display())
         }
         Commands::Path {
             workspace_name: Some(name),
             allow_missing,
+            create_if_missing,
         } => {
             if !allow_missing && !env.is_valid_workspace(&name)? {
-                return Err(anyhow::anyhow!(
-                    "Workspace '{name}' does not exist or is invalid"
-                ));
+                if create_if_missing {
+                    env.create_workspace(&name)?;
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Workspace '{name}' does not exist or is invalid"
+                    ));
+                }
             }
             let path = env.path(&name);
             println!("{}", path.display());
