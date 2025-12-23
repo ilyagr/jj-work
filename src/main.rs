@@ -28,7 +28,10 @@ enum Commands {
     Add {
         /// Name of the workspace to add
         workspace_name: String,
-        // TODO: Revision, sparse patterns
+        /// Passed to `jj workspace add`, see its help for details
+        #[arg(long, short, value_name = "REVSETS")]
+        revision: Vec<String>,
+        // TODO: sparse patterns
     },
     /// Retrun the path to a workspace or to the repo root
     Path {
@@ -40,6 +43,9 @@ enum Commands {
         allow_missing: bool,
         #[arg(long, short, conflicts_with = "allow_missing")]
         create_if_missing: bool,
+        /// For use with `--create-if-missing`. Passed to `jj workspace add`, see its help for details
+        #[arg(long, short, value_name = "REVSETS", requires = "create_if_missing")]
+        revision: Vec<String>,
     },
     /// List valid workspaces in the vault
     ///
@@ -142,12 +148,32 @@ impl Environment {
         Ok(sh)
     }
 
-    fn create_workspace(&mut self, name: &str) -> anyhow::Result<()> {
+    fn create_workspace(&mut self, name: &str, revisions: Vec<String>) -> anyhow::Result<()> {
         let sh = self.repo_shell()?;
         sh.create_dir(self.vault_dir())?;
         let workspace_path = self.vault_dir().join(name);
+
+        match revisions.as_slice() {
+            [] => {
+                cmd!(sh, "jj workspace add {workspace_path}").run()?;
+            }
+            [revision] => {
+                cmd!(sh, "jj workspace add -r {revision} {workspace_path}").run()?;
+            }
+            [first, second] => {
+                cmd!(
+                    sh,
+                    "jj workspace add -r {first} -r {second} {workspace_path}"
+                )
+                .run()?;
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Currently at most two `-r` arguments are supported when creating a workspace"
+                ));
+            }
+        }
         // TODO: Test
-        cmd!(sh, "jj workspace add {workspace_path}").run()?;
         // TODO: Check gitignores?
         for need_symlink in self.config.paths_to_symlink.iter() {
             // TODO: Windows
@@ -212,7 +238,10 @@ fn main() -> anyhow::Result<()> {
     let config = Settings::new(&sh)?;
     let mut env = Environment::new(&sh, config.clone())?;
     match cli.command {
-        Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
+        Commands::Add {
+            workspace_name,
+            revision,
+        } => env.create_workspace(&workspace_name, revision)?,
         Commands::Path {
             workspace_name: None,
             ..
@@ -223,10 +252,11 @@ fn main() -> anyhow::Result<()> {
             workspace_name: Some(name),
             allow_missing,
             create_if_missing,
+            revision,
         } => {
             if !allow_missing && !env.is_valid_workspace(&name)? {
                 if create_if_missing {
-                    env.create_workspace(&name)?;
+                    env.create_workspace(&name, revision)?;
                 } else {
                     return Err(anyhow::anyhow!(
                         "Workspace '{name}' does not exist or is invalid"
