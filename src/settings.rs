@@ -32,21 +32,21 @@ impl Settings {
         let template = r#"name ++ "=" ++ value ++ "\n""#;
         let config_form_jj_str = cmd!(
             sh,
-            "jj config list --include-defaults -T {template} --color=never x.jw"
+            "jj config list --include-defaults -T {template} --color=never x.jj-work"
         )
         .ignore_stderr()
         .read()
         .unwrap_or_default();
         let config_from_jj: toml::Value = toml::from_str::<toml::Table>(&config_form_jj_str)?
             .get("x")
-            .and_then(|x| x.get("jw"))
+            .and_then(|x| x.get("jj-work"))
             .cloned()
             .unwrap_or(toml::Value::Table(Default::default()));
         let s = Config::builder()
             // Start off by merging in the "default" configuration file
             .add_source(File::from_str(
                 r#"
-                vault_dir = ".jj/jw-vault"  # "../{repo_name}-ws
+                vault_dir = ".jj/jj-work"  # "../{repo_name}-ws
                 paths_to_symlink = []
                 # test-unknown = "fred"
             "#,

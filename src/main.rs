@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
-use jw::settings::Settings;
+use jj_work::settings::Settings;
 use std::path::PathBuf;
 use xshell::{Shell, cmd};
 
 // TODO repo-run
 
 #[derive(Parser, Debug)]
-#[command(name = "jw")]
+#[command(name = "jj-work")]
 #[command(about = "Jujutsu workspace manager", long_about = None)]
 struct Cli {
     /// Optional path to vault where new workspaces are created and looked for
@@ -100,7 +100,6 @@ impl Environment {
     }
 
     fn vault_dir(&self) -> PathBuf {
-        // Or _workspaces/ .jj/workspaces-jw/, or ../{repo_name}_workspaces
         // TODO: Git commands still work?
         self.config.vault_dir.clone()
     }

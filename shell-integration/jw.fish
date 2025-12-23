@@ -1,5 +1,5 @@
-set -l program_name jw
-set -l function_name jwcd
+set -l program_name jj-work
+set -l function_name jw
 
 function $function_name -V program_name -d "Change directory to a $program_name workspace"
     set workspace_path ($program_name path $argv) || return 1
