@@ -9,4 +9,4 @@ end
 
 complete -e -c $function_name
 # TODO: This keeps completing even after `$function_name name <TAB>`
-complete -x -c $function_name -a "($program_name list)"
+complete -x -c $function_name -a "($program_name list 2>/dev/null)"

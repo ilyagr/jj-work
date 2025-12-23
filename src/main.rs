@@ -46,6 +46,23 @@ enum Commands {
     List,
     /// Print config and environment debug info
     Debug,
+    ShellIntegration {
+        #[command(subcommand)]
+        shell: SupportedShells,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum SupportedShells {
+    Fish,
+}
+
+impl SupportedShells {
+    fn script(&self) -> &'static str {
+        match self {
+            SupportedShells::Fish => include_str!("shell-integration/jw.fish"),
+        }
+    }
 }
 
 fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
@@ -177,10 +194,21 @@ impl Environment {
 }
 
 fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    // Commands that need to work outside a repo
+    #[expect(clippy::single_match)]
+    match cli.command {
+        Commands::ShellIntegration { shell } => {
+            println!("{}", shell.script());
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let sh = Shell::new().unwrap();
     let config = Settings::new(&sh)?;
     let mut env = Environment::new(&sh, config.clone()).unwrap();
-    let cli = Cli::parse();
     match cli.command {
         Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
         Commands::Path {
@@ -206,6 +234,7 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", workspace_name);
             }
         }
+        Commands::ShellIntegration { .. } => panic!("Should be handled earlier"),
         Commands::Debug => {
             println!("{:#?}", env);
         }
