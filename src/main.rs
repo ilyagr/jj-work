@@ -35,10 +35,25 @@ enum Commands {
         /// Name of the workspace to switch to
         workspace_name: String,
         #[arg(long)]
-        _allow_missing: bool,
+        allow_missing: bool,
     },
     /// Print config and environment debug info
     Debug,
+}
+
+fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
+    // This is normally `repo_root/.jj/repo/config.toml`.
+    let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo").read()?.into();
+    let repo_root = repo_config_file
+        .parent()
+        .and_then(|p| p.parent())
+        .and_then(|p| p.parent())
+        .ok_or(anyhow::anyhow!(
+            "Couldn't determine repo root from config file path {:?}",
+            &repo_config_file
+        ))?
+        .to_path_buf();
+    Ok(repo_root)
 }
 
 #[derive(Clone, Debug)]
@@ -56,19 +71,7 @@ impl Environment {
     fn new(sh: &Shell, config: Settings) -> anyhow::Result<Self> {
         // TODO: Non-UTF-8?
         let workspace_root: PathBuf = cmd!(sh, "jj workspace root").read()?.into();
-
-        // This is normally `repo_root/.jj/repo/config.toml`.
-        let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo").read()?.into();
-        // TODO: Maybe better to put a file with path to repo in the workspaces dir? Then, jjw could work in that dir as well.
-        let repo_root = repo_config_file
-            .parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
-            .ok_or(anyhow::anyhow!(
-                "Couldn't determine repo root from config file path {:?}",
-                &repo_config_file
-            ))?
-            .to_path_buf();
+        let repo_root = get_repo_root_of_current_dir(sh)?;
 
         let workspace_name = (repo_root != workspace_root)
             .then(|| {
@@ -107,6 +110,13 @@ impl Environment {
         self.vault_dir().join(name)
     }
 
+    /// The dir returned may not exist!
+    fn workspace_shell(&self, name: &str) -> anyhow::Result<Shell> {
+        let sh = Shell::new()?;
+        sh.change_dir(self.path(name));
+        Ok(sh)
+    }
+
     fn create_workspace(&mut self, name: &str) -> anyhow::Result<()> {
         let sh = self.repo_shell()?;
         sh.create_dir(self.vault_dir())?;
@@ -128,6 +138,20 @@ impl Environment {
         Ok(())
     }
 
+    fn is_valid_workspace(&self, name: &str) -> anyhow::Result<bool> {
+        // TODO: Create `jj workspace name`, then we can compare `jj workspace name` with the dir name and error if they are different.
+        // (We probably won't support `jj workspace add --name`)
+        // TODO: Create `jj workspace repo`, or adjust template
+
+        // TODO: test
+        let sh = self.workspace_shell(name)?;
+        if !sh.path_exists(".jj") {
+            return Ok(false);
+        }
+        let workspace_root = get_repo_root_of_current_dir(&sh)?;
+        Ok(workspace_root == self.repo_root)
+    }
+
     // TODO: Delete workspace, really belongs to `jj`. Set sparse pattern to `!*`, then figure out ignore files.
 }
 
@@ -140,8 +164,14 @@ fn main() -> anyhow::Result<()> {
         Commands::Add { workspace_name } => env.create_workspace(&workspace_name)?,
         Commands::Path {
             workspace_name,
-            _allow_missing,
+            allow_missing,
         } => {
+            if !allow_missing && !env.is_valid_workspace(&workspace_name)? {
+                return Err(anyhow::anyhow!(
+                    "Workspace '{}' does not exist or is invalid",
+                    workspace_name
+                ));
+            }
             let path = env.path(&workspace_name);
             println!("{}", path.display());
         }
