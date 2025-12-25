@@ -1,5 +1,5 @@
 use clap::{CommandFactory as _, Parser, Subcommand};
-use clap_complete::CompleteEnv;
+use clap_complete::{ArgValueCandidates, CompleteEnv};
 use jj_work::settings::Settings;
 use std::{
     io::{Write, stderr},
@@ -32,6 +32,7 @@ enum Commands {
     Add {
         workspace_name: String,
         /// Passed to `jj workspace add`, see its help for details
+        // TODO: add completer. Aside: Seems like `jj workspace add -r` also currently needs one?
         #[arg(long, short, value_name = "REVSETS")]
         revision: Vec<String>,
         // TODO: sparse patterns
@@ -41,12 +42,16 @@ enum Commands {
     /// Will not remove the workspace dir. Will remove any files tracked by `jj`
     /// the `.jj` dir, and any symlinks `jj-work add` would create.
     // TODO: Record symlinks actually created so that we can delete the right ones
-    Delete { workspace_name: String },
+    Delete {
+        #[arg(add = ArgValueCandidates::new(complete::workspaces))]
+        workspace_name: String,
+    },
     /// Retrun the path to a workspace or to the repo root
     Path {
         /// Name of the workspace to switch to
         ///
         /// If not specified, returns the path to the repo root.
+        #[arg(add = ArgValueCandidates::new(complete::workspaces))]
         workspace_name: Option<String>,
         #[arg(long)]
         allow_missing: bool,
@@ -79,6 +84,34 @@ impl SupportedShells {
         match self {
             SupportedShells::Fish => include_str!("shell-integration/jw.fish"),
         }
+    }
+}
+
+mod complete {
+    use super::setup_env;
+    use clap_complete::CompletionCandidate;
+
+    fn with_env<F>(completion_fn: F) -> Vec<CompletionCandidate>
+    where
+        F: Fn(&crate::Environment) -> Result<Vec<CompletionCandidate>, anyhow::Error>,
+    {
+        setup_env()
+            .and_then(|env| completion_fn(&env))
+            .unwrap_or_else(|e| {
+                eprintln!("{}", e);
+                Vec::new()
+            })
+    }
+
+    pub fn workspaces() -> Vec<CompletionCandidate> {
+        with_env(|env| {
+            Ok(env
+                .list_workspaces()
+                .unwrap_or_default()
+                .into_iter()
+                .map(CompletionCandidate::new)
+                .collect())
+        })
     }
 }
 
@@ -273,6 +306,13 @@ impl Environment {
     }
 }
 
+fn setup_env() -> anyhow::Result<Environment> {
+    let sh = Shell::new()?;
+    let config = Settings::new(&sh)?;
+    let env = Environment::new(&sh, config)?;
+    Ok(env)
+}
+
 fn main() -> anyhow::Result<()> {
     CompleteEnv::with_factory(Cli::command).complete();
     let cli = Cli::parse();
@@ -287,9 +327,7 @@ fn main() -> anyhow::Result<()> {
         _ => {}
     }
 
-    let sh = Shell::new().unwrap();
-    let config = Settings::new(&sh)?;
-    let mut env = Environment::new(&sh, config.clone())?;
+    let mut env = setup_env()?;
     match cli.command {
         Commands::Add {
             workspace_name,
