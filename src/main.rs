@@ -1,4 +1,5 @@
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory as _, Parser, Subcommand};
+use clap_complete::CompleteEnv;
 use jj_work::settings::Settings;
 use std::{
     io::{Write, stderr},
@@ -273,6 +274,7 @@ impl Environment {
 }
 
 fn main() -> anyhow::Result<()> {
+    CompleteEnv::with_factory(Cli::command).complete();
     let cli = Cli::parse();
 
     // Commands that need to work outside a repo
