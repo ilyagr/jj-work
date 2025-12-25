@@ -1,6 +1,7 @@
 set -l program_name jj-work
 set -l function_name jw
 
+# TODO: Move this inside Rust code or a separate shell file to distinguish `jw.fish`?
 COMPLETE=fish $program_name | source
 
 function $function_name --wraps "$program_name path" -V program_name \
@@ -10,6 +11,8 @@ function $function_name --wraps "$program_name path" -V program_name \
     cd $workspace_path
 end
 
-# complete -e -c $function_name
-# TODO: This keeps completing even after `$function_name name <TAB>`
-# complete -x -c $function_name -a "($program_name list 2>/dev/null)"
+# Todo: cross-shell completion for `jw` to replicate the `--wraps` above. (Also,
+# `jw` needs to be written for other shells, but that's easier). E.g. follow
+# https://github.com/astral-sh/uv/blob/4269f889bb57b3dd80fd3158c3fac7921592dd5e/crates/uv/src/lib.rs#L1289-L1311
+
+# Or bash: https://stackoverflow.com/questions/55447023/how-do-i-defer-shell-completion-to-another-command-in-bash-and-zsh
