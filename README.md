@@ -11,6 +11,49 @@ This is currently an unpolished proof-of-concept.
 [workspaces]: https://docs.jj-vcs.dev/latest/working-copy/#workspaces
 [jj-workspace cli]: https://docs.jj-vcs.dev/latest/cli-reference/#jj-workspace
 
+## Installation and setup
+
+Windows is not currently supported. WSL should be fine.
+
+For now, this tool should be installed by compiling from a clone of this repo.
+Rust is required. For example:
+
+```bash
+jj git clone -b main https://github.com/ilyagr/jj-work
+cd jj-work
+cargo install --path $(jj root)
+```
+
+Then, you should set up the shell integration for your shell. 
+
+### Shell integration
+
+#### Fish shell
+
+Simple option: Put `jj-work shell-integration fish | source` anywhere in
+your config.
+
+Suggested option:
+
+```fish
+mkdir -p ~/.config/fish/conf.d
+begin
+    echo 'status is-interactive &&'
+    echo 'type -q jj-work &&'
+    echo 'jj-work shell-integration fish | source'
+end > ~/.config/fish/conf.d/jj-work.fish
+```
+
+Then, restart `fish`, e.g. by running `exec fish`.
+
+#### Other shells
+
+TODO, see [suggestions on implementing shell support
+below](#notes-on-implementing-support-for-more-shells).
+
+Workaround: you can use the `jj-work add` command together with commands such as
+`cd $(jj-work path space)`.
+
 ## Features
 
 If [shell integration](#installation-and-shell-integration) is installed,
@@ -38,17 +81,49 @@ For example, `jj-work delete space` improves on `jj workspace forget` by
 deleting all the tracked files from the workspace and the `.jj` dir. (TODO:
   Consider adding a version of this to `jj` proper)
 
-### Features TODO
+### Future Plans
 
-- More shells
-- tmux integration
 - Auto-deduplicating workspace name (e.g. add date to them)
 - `../{repo_name}-work` vault path support.
   https://crates.io/crates/tinytemplate or
   https://github.com/mitsuhiko/minijinja?
+- allow run templated scripts instead of simple `cd`-ing to a workspace. Will reduce the need for shell integration
+- tmux integration
 - Put `.gitignore` in vault dir?
-- Windows (without symlinks, and then symlink support)
+- Windows (first, make it compile without symlink support, and then implement
+  symlink support)
 - Better integration with Git worktrees (TODO: Link to jj issues, perhaps discuss `.git` creation)
+- More shells (see just below)
+
+#### Notes on implementing support for more shells
+
+Help wanted! There are a few tasks to be done for each shell.
+
+Most importantly, the end result should be tested by a user of the relevant
+shell.
+
+- Set up `jj-work shell-integration <shell>` with Clap's completion. Document
+  the way to use the command to configure the shell in this file and in the Clap
+  help (docstring for the enum option you will need to create for the new shell).
+
+- Create a `jw` shell function for each shell that runs `jj-work jw-command` and, if that succeeds and prints something to stdout, changes the dir to the path it returned.
+
+  For guidance, see [the fish version](src/shell-integration/jw.fish), [shell
+  scripts that define `br` functions inside Rust files for
+  `broot`](https://github.com/Canop/broot/tree/main/src/shell_install) and
+  various `lfcd` examples in <https://github.com/gokcehan/lf/tree/master/etc>
+  (though they don't illustrate checking the exit code)
+
+- Create completion for the `jw` shell function. It should be the same as the
+  completion Clap set up for `jj-work jw-command`.
+
+  This is not as important, and might be harder, but is quite helpful.
+
+  Setting up the `jw` completion could be done for each shell individually (in
+  the case of Fish, for example, it is currently done merely by adding a
+  `--wraps` command to the Fish function definition), or see TODOs inside the
+  code for a reference to how `uv`'s `uvx` tries to do it via a more advanced
+  use of Clap (which would need testing).
 
 ## User Guide
 
@@ -56,8 +131,6 @@ A `jj-work` workspace is just a normal `jj` workspace that is located in a child
 directory of a special "`jj-work` vault" directory, and has the same name as its
 directory. So, the output of `jj-work list` will contain a subset of the
 workspaces `jj workspace list` shows.
-
-### Installation and shell integration
 
 ### Configuration
 
