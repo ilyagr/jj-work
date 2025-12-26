@@ -200,28 +200,30 @@ fn main() -> anyhow::Result<()> {
             println!("{}", include_str!("../README.md"));
             return Ok(());
         }
+        Commands::JWCommand {
+            args: _,
+            help: true,
+        } => {
+            // Help for the `jw` shell function
+            // Printed to stderr because `jw` swallows whatever we print to stdout
+            eprintln!("jw: call `jj-work path` and cd to the corresponding dir.");
+            eprintln!();
+            eprintln!("Use `jw space` to jump to a `jj-work` workspace named `space`.");
+            eprintln!();
+            eprintln!("See `jj-work help path` for additional options.");
+            exit(1) // This will cause `jw` to not change the dir
+        }
         _ => {}
     }
 
-    let mut env = setup_env()?;
+    let mut env = setup_env()?; // Fails if we are not in a `jj` repo/workspace
     match cli.command {
         Commands::Add {
             workspace_name,
             revision,
         } => env.create_workspace(&workspace_name, &revision)?,
         Commands::Delete { workspace_name } => env.delete_workspace(&workspace_name)?,
-        Commands::Path(args) => path_command(&mut env, &args)?,
-        Commands::JWCommand { args, help } => {
-            if help {
-                // Help for the `jw` shell function
-                // Printed to stderr because `jw` swallows whatever we print to stdout
-                eprintln!("jw: call `jj-work path` and cd to the corresponding dir.");
-                eprintln!();
-                eprintln!("Use `jw space` to jump to a `jj-work` workspace named `space`.");
-                eprintln!();
-                eprintln!("See `jj-work help path` for additional options.");
-                exit(1) // This will cause `jw` to not change the dir
-            }
+        Commands::Path(args) | Commands::JWCommand { args, help: false } => {
             path_command(&mut env, &args)?
         }
         Commands::List => {
@@ -229,9 +231,16 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", workspace_name);
             }
         }
-        Commands::ShellIntegration { .. } | Commands::Docs => panic!("Should be handled earlier"),
         Commands::Debug => {
             println!("{:#?}", env);
+        }
+        Commands::ShellIntegration { .. }
+        | Commands::Docs
+        | Commands::JWCommand {
+            args: _,
+            help: true,
+        } => {
+            panic!("Should be handled earlier, as an early command")
         }
     };
     Ok(())
