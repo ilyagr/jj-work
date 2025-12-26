@@ -192,12 +192,12 @@ fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
 #[derive(Clone, Debug)]
 struct Environment {
     config: Settings,
-    _current_dir: PathBuf,
     repo_root: PathBuf,
-    _workspace_root: PathBuf,
+    _current_dir: PathBuf,
+    _current_workspace_root: PathBuf,
     // workspaces_dir: PathBuf,
     // repo_config_file: PathBuf,
-    _workspace_name: Option<String>,
+    _current_workspace_name: Option<String>,
 }
 
 impl Environment {
@@ -222,8 +222,8 @@ impl Environment {
             config,
             _current_dir: sh.current_dir(),
             repo_root,
-            _workspace_root: workspace_root,
-            _workspace_name: workspace_name,
+            _current_workspace_root: workspace_root,
+            _current_workspace_name: workspace_name,
         })
     }
 
