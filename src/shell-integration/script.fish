@@ -2,7 +2,8 @@ set -l program_name jj-work
 set -l function_name jw
 
 complete -e $program_name
-# TODO: Move this inside Rust code or a separate shell file to distinguish `jw.fish`?
+# TODO: Move this inside Rust code or a separate shell file and have a dedicated
+# file for defining `jw`?
 COMPLETE=fish $program_name | source
 
 complete -e $function_name  # Completion is created by `--wraps` option below

@@ -145,7 +145,7 @@ enum SupportedShells {
 impl SupportedShells {
     fn script(&self) -> &'static str {
         match self {
-            SupportedShells::Fish => include_str!("shell-integration/jw.fish"),
+            SupportedShells::Fish => include_str!("shell-integration/script.fish"),
         }
     }
 }

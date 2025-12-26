@@ -108,7 +108,7 @@ shell.
 
 - Create a `jw` shell function for each shell that runs `jj-work jw-command` and, if that succeeds and prints something to stdout, changes the dir to the path it returned.
 
-  For guidance, see [the fish version](src/shell-integration/jw.fish), [shell
+  For guidance, see [the fish version](src/shell-integration/script.fish), [shell
   scripts that define `br` functions inside Rust files for
   `broot`](https://github.com/Canop/broot/tree/main/src/shell_install) and
   various `lfcd` examples in <https://github.com/gokcehan/lf/tree/master/etc>
