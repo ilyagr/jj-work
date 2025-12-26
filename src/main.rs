@@ -4,6 +4,7 @@ use jj_work::settings::Settings;
 use std::{
     io::{Write, stderr},
     path::PathBuf,
+    process::exit,
 };
 use xshell::{Shell, cmd};
 
@@ -54,6 +55,17 @@ enum Commands {
     List,
     /// Print config and environment debug info
     Debug,
+    /// The command called by the `jw` shell function.
+    ///
+    /// A thin alias around other `jj-work` commands, currently `jj-work path`
+    #[command(hide = true, name = "jw-command", disable_help_flag = true)]
+    JWCommand {
+        #[command(flatten)]
+        args: PathArgs,
+        /// Show help for the `jw` shell function
+        #[arg(long, short)]
+        help: bool,
+    },
     ShellIntegration {
         #[command(subcommand)]
         shell: SupportedShells,
@@ -366,6 +378,19 @@ fn main() -> anyhow::Result<()> {
         } => env.create_workspace(&workspace_name, &revision)?,
         Commands::Delete { workspace_name } => env.delete_workspace(&workspace_name)?,
         Commands::Path(args) => path_command(&mut env, &args)?,
+        Commands::JWCommand { args, help } => {
+            if help {
+                // Help for the `jw` shell function
+                // Printed to stderr because `jw` swallows whatever we print to stdout
+                eprintln!("jw: call `jj-work path` and cd to the corresponding dir.");
+                eprintln!();
+                eprintln!("Use `jw space` to jump to a `jj-work` workspace named `space`.");
+                eprintln!();
+                eprintln!("See `jj-work help path` for additional options.");
+                exit(1) // This will cause `jw` to not change the dir
+            }
+            path_command(&mut env, &args)?
+        }
         Commands::List => {
             for workspace_name in env.list_workspaces()? {
                 println!("{}", workspace_name);

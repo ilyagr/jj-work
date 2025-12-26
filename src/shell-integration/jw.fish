@@ -4,10 +4,10 @@ set -l function_name jw
 # TODO: Move this inside Rust code or a separate shell file to distinguish `jw.fish`?
 COMPLETE=fish $program_name | source
 
-function $function_name --wraps "$program_name path" -V program_name \
+function $function_name --wraps "$program_name jw-command" -V program_name \
                         -d "Change directory to a $program_name workspace"
-    set workspace_path ($program_name path $argv) || return 1
-    test -z "$workspace_path" && return 0  # For safety, and to allow explicit decision to stay in place
+    set workspace_path ($program_name jw-command $argv) || return 1
+    test -z "$workspace_path" && return 0  # To avoid jumping to user's home unexpectedly, and to allow explicit decision to stay in place
     cd $workspace_path
 end
 
