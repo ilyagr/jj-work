@@ -140,6 +140,10 @@ fn path_command(
 enum SupportedShells {
     /// Use as `jj-work shell-integration fish | source`
     Fish,
+    /// Use as `source <(jj-work shell-integration bash)`
+    Bash,
+    /// Use as `source <(jj-work shell-integration zsh)`
+    Zsh,
 }
 
 impl SupportedShells {
@@ -147,6 +151,16 @@ impl SupportedShells {
         match self {
             SupportedShells::Fish => {
                 writeln!(writer, "{}", include_str!("shell-integration/script.fish"))
+            }
+            SupportedShells::Bash => {
+                writeln!(writer, "source <(COMPLETE=bash jj-work)")?;
+                writeln!(writer)?;
+                writeln!(writer, "{}", include_str!("shell-integration/script.sh"))
+            }
+            SupportedShells::Zsh => {
+                writeln!(writer, "source <(COMPLETE=zsh jj-work)")?;
+                writeln!(writer)?;
+                writeln!(writer, "{}", include_str!("shell-integration/script.sh"))
             }
         }
     }

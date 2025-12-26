@@ -46,6 +46,26 @@ end > ~/.config/fish/conf.d/jj-work.fish
 
 Then, restart `fish`, e.g. by running `exec fish`.
 
+#### Bash and Zsh
+
+Put one of these in your config:
+
+```bash
+source <(jj-work shell-integration bash)
+```
+
+or
+
+```bash
+source <(jj-work shell-integration zsh)
+```
+
+Then restart your shell.
+
+This defines the `jw` function and sets up the `jj-work` command-line
+completion, but there currently is no command-line completion for `jw`. Bash and
+Zsh are currently less tested than Fish, improvements are welcome.
+
 #### Other shells
 
 TODO, see [suggestions on implementing shell support
@@ -121,9 +141,11 @@ shell.
 
   Setting up the `jw` completion could be done for each shell individually (in
   the case of Fish, for example, it is currently done merely by adding a
-  `--wraps` command to the Fish function definition), or see TODOs inside the
-  code for a reference to how `uv`'s `uvx` tries to do it via a more advanced
-  use of Clap (which would need testing).
+  `--wraps` command to the Fish function definition), or see the [approach `uv`
+  takes for the `uvx` command-line completions][uv approach] for how it might be
+  possible via a more advanced use of Clap (which would need testing).
+
+[uv approach]: https://github.com/astral-sh/uv/blob/4269f889bb57b3dd80fd3158c3fac7921592dd5e/crates/uv/src/lib.rs#L1289-L1311
 
 ## User Guide
 
