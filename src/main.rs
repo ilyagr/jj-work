@@ -10,9 +10,13 @@ use xshell::{Shell, cmd};
 
 // TODO repo-run
 
+/// jj-work: a workspace manager for https://jj-vcs.dev
+///
+/// Homepage: https://github.com/ilyagr/jj-work
+///
+/// See `jj-work help shell-integration` for details on how to enable shell integration.
 #[derive(Parser, Debug)]
 #[command(name = "jj-work")]
-#[command(about = "Jujutsu workspace manager", long_about = None)]
 struct Cli {
     /// Optional path to vault where new workspaces are created and looked for
     ///
@@ -66,6 +70,9 @@ enum Commands {
         #[arg(long, short)]
         help: bool,
     },
+    /// Install `jj-work`'s shell integration into your shell
+    ///
+    /// See subcommand description for the exact command to put into your shell config
     ShellIntegration {
         #[command(subcommand)]
         shell: SupportedShells,
@@ -119,6 +126,7 @@ fn path_command(
 
 #[derive(Subcommand, Debug)]
 enum SupportedShells {
+    /// Use as `jj-work shell-integration fish | source`
     Fish,
 }
 
