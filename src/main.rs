@@ -46,22 +46,7 @@ enum Commands {
         #[arg(add = ArgValueCandidates::new(complete::workspaces))]
         workspace_name: String,
     },
-    /// Retrun the path to a workspace or to the repo root
-    Path {
-        /// Name of the workspace to switch to
-        ///
-        /// If not specified, returns the path to the repo root.
-        #[arg(add = ArgValueCandidates::new(complete::workspaces))]
-        workspace_name: Option<String>,
-        #[arg(long)]
-        allow_missing: bool,
-        #[arg(long, short, conflicts_with = "allow_missing")]
-        // Not called `--add-if-missing` to be less confusable with `--allow-missing`
-        create_if_missing: bool,
-        /// For use with `--create-if-missing`. Passed to `jj workspace add`, see its help for details
-        #[arg(long, short, value_name = "REVSETS", requires = "create_if_missing")]
-        revision: Vec<String>,
-    },
+    Path(PathArgs),
     /// List valid workspaces in the vault
     ///
     /// This should be a subset of workspaces that `jj workspace list` would
@@ -73,6 +58,51 @@ enum Commands {
         #[command(subcommand)]
         shell: SupportedShells,
     },
+}
+
+/// Retrun the path to a workspace or to the repo root
+#[derive(Parser, Debug)]
+struct PathArgs {
+    /// Name of the workspace to switch to
+    ///
+    /// If not specified, returns the path to the repo root.
+    #[arg(add = ArgValueCandidates::new(complete::workspaces))]
+    workspace_name: Option<String>,
+    #[arg(long)]
+    allow_missing: bool,
+    #[arg(long, short, conflicts_with = "allow_missing")]
+    // Not called `--add-if-missing` to be less confusable with `--allow-missing`
+    create_if_missing: bool,
+    /// For use with `--create-if-missing`. Passed to `jj workspace add`, see its help for details
+    #[arg(long, short, value_name = "REVSETS", requires = "create_if_missing")]
+    revision: Vec<String>,
+}
+
+fn path_command(
+    env: &mut Environment,
+    PathArgs {
+        workspace_name,
+        allow_missing,
+        create_if_missing,
+        revision,
+    }: &PathArgs,
+) -> anyhow::Result<()> {
+    let Some(name) = workspace_name else {
+        println!("{}", env.repo_root.display());
+        return Ok(());
+    };
+    if !allow_missing && !env.is_valid_workspace(name)? {
+        if *create_if_missing {
+            env.create_workspace(name, revision)?;
+        } else {
+            return Err(anyhow::anyhow!(
+                "Workspace '{name}' does not exist or is invalid"
+            ));
+        }
+    }
+    let path = env.path(name);
+    println!("{}", path.display());
+    Ok(())
 }
 
 #[derive(Subcommand, Debug)]
@@ -191,12 +221,12 @@ impl Environment {
         Ok(sh)
     }
 
-    fn create_workspace(&mut self, name: &str, revisions: Vec<String>) -> anyhow::Result<()> {
+    fn create_workspace(&mut self, name: &str, revisions: &[String]) -> anyhow::Result<()> {
         let sh = self.repo_shell()?;
         sh.create_dir(self.vault_dir())?;
         let workspace_path = self.vault_dir().join(name);
 
-        match revisions.as_slice() {
+        match revisions {
             [] => {
                 cmd!(sh, "jj workspace add {workspace_path}").run()?;
             }
@@ -333,32 +363,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Add {
             workspace_name,
             revision,
-        } => env.create_workspace(&workspace_name, revision)?,
+        } => env.create_workspace(&workspace_name, &revision)?,
         Commands::Delete { workspace_name } => env.delete_workspace(&workspace_name)?,
-        Commands::Path {
-            workspace_name: None,
-            ..
-        } => {
-            println!("{}", env.repo_root.display())
-        }
-        Commands::Path {
-            workspace_name: Some(name),
-            allow_missing,
-            create_if_missing,
-            revision,
-        } => {
-            if !allow_missing && !env.is_valid_workspace(&name)? {
-                if create_if_missing {
-                    env.create_workspace(&name, revision)?;
-                } else {
-                    return Err(anyhow::anyhow!(
-                        "Workspace '{name}' does not exist or is invalid"
-                    ));
-                }
-            }
-            let path = env.path(&name);
-            println!("{}", path.display());
-        }
+        Commands::Path(args) => path_command(&mut env, &args)?,
         Commands::List => {
             for workspace_name in env.list_workspaces()? {
                 println!("{}", workspace_name);
