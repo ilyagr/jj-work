@@ -1,9 +1,11 @@
 set -l program_name jj-work
 set -l function_name jw
 
+complete -e $program_name
 # TODO: Move this inside Rust code or a separate shell file to distinguish `jw.fish`?
 COMPLETE=fish $program_name | source
 
+complete -e $function_name  # Completion is created by `--wraps` option below
 function $function_name --wraps "$program_name jw-command" -V program_name \
                         -d "Change directory to a $program_name workspace"
     set workspace_path ($program_name jw-command $argv) || return 1
