@@ -70,6 +70,14 @@ enum Commands {
         #[arg(long, short)]
         help: bool,
     },
+    /// Output the README from <https://github.com/ilyagr/jj-work> to the standard output
+    ///
+    /// If you have `bat` installed, one way to view this highlighted is with
+    /// `jj-work docs | bat -l markdown --style=plain`.
+    ///
+    /// TODO: I don't know of a tool that can render this in a terminal with
+    /// internal hyperlinks working.
+    Docs,
     /// Install `jj-work`'s shell integration into your shell
     ///
     /// See subcommand description for the exact command to put into your shell config
@@ -369,10 +377,14 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Commands that need to work outside a repo
-    #[expect(clippy::single_match)]
     match cli.command {
         Commands::ShellIntegration { shell } => {
             println!("{}", shell.script());
+            return Ok(());
+        }
+        Commands::Docs => {
+            // Output the README from the `jj-work` homepage to the standard output
+            println!("{}", include_str!("../README.md"));
             return Ok(());
         }
         _ => {}
@@ -404,7 +416,7 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", workspace_name);
             }
         }
-        Commands::ShellIntegration { .. } => panic!("Should be handled earlier"),
+        Commands::ShellIntegration { .. } | Commands::Docs => panic!("Should be handled earlier"),
         Commands::Debug => {
             println!("{:#?}", env);
         }
