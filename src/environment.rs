@@ -26,7 +26,7 @@ fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
 #[derive(Clone, Debug)]
 pub struct Environment {
     config: Settings,
-    pub repo_root: PathBuf,
+    repo_root: PathBuf,
     _current_dir: PathBuf,
     _current_workspace_root: PathBuf,
     // workspaces_dir: PathBuf,
@@ -71,6 +71,10 @@ impl Environment {
             _current_workspace_root: workspace_root,
             _current_workspace_name: workspace_name,
         })
+    }
+
+    pub fn repo_root(&self) -> &PathBuf {
+        &self.repo_root
     }
 
     fn vault_dir(&self) -> PathBuf {

@@ -118,7 +118,7 @@ fn path_command(
     }: &PathArgs,
 ) -> anyhow::Result<()> {
     let Some(name) = workspace_name else {
-        println!("{}", env.repo_root.display());
+        println!("{}", env.repo_root().display());
         return Ok(());
     };
     if !allow_missing && !env.is_valid_workspace(name)? {
