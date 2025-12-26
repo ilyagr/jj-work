@@ -156,8 +156,9 @@ mod complete {
     {
         setup_env()
             .and_then(|env| completion_fn(&env))
-            .unwrap_or_else(|e| {
-                eprintln!("{}", e);
+            .unwrap_or_else(|_e| {
+                // TODO: Log this in some way that isn't visible to the user by default?
+                // eprintln!("{}", e);
                 Vec::new()
             })
     }
@@ -203,7 +204,19 @@ struct Environment {
 impl Environment {
     fn new(sh: &Shell, config: Settings) -> anyhow::Result<Self> {
         // TODO: Non-UTF-8?
-        let workspace_root: PathBuf = cmd!(sh, "jj workspace root").read()?.into();
+        let workspace_root: PathBuf = cmd!(sh, "jj workspace root")
+            // Would be nice to capture the stderr and print it as part of
+            // error. However, we shouldn't let `jj workspace root` print it
+            // since this call happens during command-line completion, which
+            // needs to suppress all error output.
+            .ignore_stderr()
+            .read()
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Current directory must be in a jj repo/workspace, but we failed to find it: {e}"
+                )
+            })?
+            .into();
         let repo_root = get_repo_root_of_current_dir(sh)?;
 
         let workspace_name = (repo_root != workspace_root)
