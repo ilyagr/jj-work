@@ -143,9 +143,11 @@ enum SupportedShells {
 }
 
 impl SupportedShells {
-    fn script(&self) -> &'static str {
+    fn write_script(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
         match self {
-            SupportedShells::Fish => include_str!("shell-integration/script.fish"),
+            SupportedShells::Fish => {
+                writeln!(writer, "{}", include_str!("shell-integration/script.fish"))
+            }
         }
     }
 }
@@ -190,7 +192,7 @@ pub fn run(cli: Cli) -> anyhow::Result<()> {
     // "Early" commands, the commands that need to work outside a repo
     match cli.command {
         Commands::ShellIntegration { shell } => {
-            println!("{}", shell.script());
+            shell.write_script(&mut std::io::stdout())?;
             return Ok(());
         }
         Commands::Docs => {
