@@ -32,7 +32,7 @@ impl Settings {
         let template = r#"name ++ "=" ++ value ++ "\n""#;
         let config_form_jj_str = cmd!(
             sh,
-            "jj config list --include-defaults -T {template} --color=never x.jj-work"
+            "jj config list --ignore-working-copy --include-defaults -T {template} --color=never x.jj-work"
         )
         .ignore_stderr()
         .read()

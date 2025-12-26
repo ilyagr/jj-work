@@ -177,7 +177,9 @@ mod complete {
 
 fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
     // This is normally `repo_root/.jj/repo/config.toml`.
-    let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo").read()?.into();
+    let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo --ignore-working-copy")
+        .read()?
+        .into();
     let repo_root = repo_config_file
         .parent()
         .and_then(|p| p.parent())
@@ -204,7 +206,7 @@ struct Environment {
 impl Environment {
     fn new(sh: &Shell, config: Settings) -> anyhow::Result<Self> {
         // TODO: Non-UTF-8?
-        let workspace_root: PathBuf = cmd!(sh, "jj workspace root")
+        let workspace_root: PathBuf = cmd!(sh, "jj workspace root --ignore-working-copy")
             // Would be nice to capture the stderr and print it as part of
             // error. However, we shouldn't let `jj workspace root` print it
             // since this call happens during command-line completion, which
