@@ -56,6 +56,7 @@ enum Commands {
         #[arg(long)]
         allow_missing: bool,
         #[arg(long, short, conflicts_with = "allow_missing")]
+        // Not called `--add-if-missing` to be less confusable with `--allow-missing`
         create_if_missing: bool,
         /// For use with `--create-if-missing`. Passed to `jj workspace add`, see its help for details
         #[arg(long, short, value_name = "REVSETS", requires = "create_if_missing")]
