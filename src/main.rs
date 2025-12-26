@@ -95,10 +95,16 @@ struct PathArgs {
     /// If not specified, returns the path to the repo root.
     #[arg(add = ArgValueCandidates::new(complete::workspaces))]
     workspace_name: Option<String>,
+    /// Use location where the workspace would be, whether or not it's actually
+    /// there
+    ///
+    /// Skip checking whether the target dir exists or whether it contains a
+    /// valid workspace for the correct repository
     #[arg(long)]
     allow_missing: bool,
     #[arg(long, short, conflicts_with = "allow_missing")]
-    // Not called `--add-if-missing` to be less confusable with `--allow-missing`
+    // Could be called `--add-if-missing` to match `jj-work add`, but that would
+    // make the short option `-a`. That is easy to confuse with `--allow-missing`
     create_if_missing: bool,
     /// For use with `--create-if-missing`. Passed to `jj workspace add`, see its help for details
     #[arg(long, short, value_name = "REVSETS", requires = "create_if_missing")]
