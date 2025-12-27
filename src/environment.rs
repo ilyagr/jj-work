@@ -35,7 +35,7 @@ fn get_repo_root(workspace_root: &PathBuf) -> anyhow::Result<PathBuf> {
 
 #[derive(Clone, Debug)]
 pub struct Environment {
-    config: Settings,
+    pub config: Settings,
     repo_root: PathBuf,
     _current_dir: PathBuf,
     _current_workspace_root: PathBuf,

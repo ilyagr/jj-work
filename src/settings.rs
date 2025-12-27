@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use config::{Config, ConfigError, File, FileFormat};
 use serde::Deserialize;
@@ -23,6 +23,7 @@ pub struct Settings {
     pub vault_dir: PathBuf,
     /// Relative to the repo root
     pub paths_to_symlink: Vec<PathBuf>,
+    pub command: HashMap<String, Vec<String>>,
 }
 
 impl Settings {

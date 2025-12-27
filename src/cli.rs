@@ -1,6 +1,7 @@
 use crate::environment::Environment;
 use crate::settings::Settings;
 
+use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use clap_complete::ArgValueCandidates;
 use std::{path::PathBuf, process::exit};
@@ -50,6 +51,30 @@ enum Commands {
         workspace_name: String,
     },
     Path(PathArgs),
+    /// Execute a pre-configured shell command inside the given workspace or a
+    /// newly created workspace
+    //
+    // TODO: Set up nice environment variables for the command execution. (Or do
+    // we need to?) Info that could be useful:
+    //
+    // - repo root path (only needed as long as `jj root --repo-root` in not
+    //   implemented)
+    //
+    // - relative path from the original workspace's root to the original
+    //   current dir (or should we just cd there? but it might not exist.)
+    ExecIn {
+        /// Name of the command
+        ///
+        /// For example, command `NAME` can be defined as a config:
+        ///
+        /// ```toml
+        /// x.jj-work.command.NAME = ["bash", "-c", "echo The workspace is in $(pwd)"]
+        /// ```
+        #[arg(add = ArgValueCandidates::new(complete::commands))]
+        command: String,
+        #[command(flatten)]
+        args: PathArgs,
+    },
     /// List valid workspaces in the vault
     ///
     /// This should be a subset of workspaces that `jj workspace list` would
@@ -139,6 +164,35 @@ fn path_command(env: &mut Environment, args: &PathArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn exec_in_command(
+    env: &mut Environment,
+    command_name: &str,
+    args: &PathArgs,
+) -> anyhow::Result<()> {
+    let mut command = {
+        let (program, command_args) = env
+            .config
+            .command
+            .get(command_name)
+            .ok_or_else(|| anyhow!("No command found for name {command_name}."))?
+            .split_first()
+            .ok_or_else(|| anyhow!("Command for name {command_name} is empty"))?;
+        let mut cmd = std::process::Command::new(program);
+        cmd.args(command_args);
+        cmd
+    };
+
+    let path = get_or_create_workspace(env, args)?;
+    command.current_dir(&path);
+
+    let command_status = command.status()?;
+    if command_status.success() {
+        Ok(())
+    } else {
+        Err(anyhow! {"Command `{command:?}` failed with {command_status}"})
+    }
+}
+
 #[derive(Subcommand, Debug)]
 enum SupportedShells {
     /// Use as `jj-work shell-integration fish | source`
@@ -196,6 +250,17 @@ mod complete {
                 .collect())
         })
     }
+
+    pub fn commands() -> Vec<CompletionCandidate> {
+        with_env(|env| {
+            Ok(env
+                .config
+                .command
+                .keys()
+                .map(CompletionCandidate::new)
+                .collect())
+        })
+    }
 }
 
 fn setup_env() -> anyhow::Result<Environment> {
@@ -243,6 +308,7 @@ pub fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Path(args) | Commands::JWCommand { args, help: false } => {
             path_command(&mut env, &args)?
         }
+        Commands::ExecIn { command, args } => exec_in_command(&mut env, &command, &args)?,
         Commands::List => {
             for workspace_name in env.list_workspaces()? {
                 println!("{}", workspace_name);
