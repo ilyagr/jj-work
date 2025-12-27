@@ -6,10 +6,21 @@
 help with using [`jj` workspaces][workspaces]. `jj-work` wraps the regular [`jj
 workspace` commands][jj-workspace cli].
 
-This is currently an unpolished proof-of-concept.
-
 [workspaces]: https://docs.jj-vcs.dev/latest/working-copy/#workspaces
 [jj-workspace cli]: https://docs.jj-vcs.dev/latest/cli-reference/#jj-workspace
+
+## Warning: experimental code
+
+This is currently an unpolished and unfinished proof-of-concept. I'd like to find out what
+features in `jj-work` or `jj` would improve these kinds of workflows. In it's
+current state, `jj-work` is likely to be most appropriate for people who are
+also interested in developing `jj` workspace workflows, and are willing to work
+through any surprises that might come up.
+
+There is no CI, no version number, and no promise of stability. Branches other
+than `trunk` are likely to be force-pushed to, and `trunk` is not safe from
+force-pushes either. If and as the project eventually matures, these things will
+change (starting with the "no CI", which is a little embarassing).
 
 ## Installation and setup
 
@@ -19,12 +30,14 @@ For now, this tool should be installed by compiling from a clone of this repo.
 Rust is required. For example:
 
 ```bash
-jj git clone -b main https://github.com/ilyagr/jj-work
+jj git clone -b trunk https://github.com/ilyagr/jj-work
 cd jj-work
 cargo install --path $(jj root)
 ```
 
-Then, you should set up the shell integration for your shell. 
+Then, you should set up the shell integration for your shell and consider
+whether you'd like to [configure `jj-work` to create symlinks in new
+workspaces](#creating-symlinks) for some of the repos you will use `jj-work` on. 
 
 ### Shell integration
 
@@ -103,6 +116,9 @@ deleting all the tracked files from the workspace and the `.jj` dir. (TODO:
 
 ### Future Plans
 
+- Better ways to handle the issue of stale workspaces. For example, nudge users
+  towards creating workspaces on commits that are unlikely to interfere with
+  each other.
 - Auto-deduplicating workspace name (e.g. add date to them)
 - `../{repo_name}-work` vault path support.
   https://crates.io/crates/tinytemplate or
@@ -147,7 +163,7 @@ shell.
 
 [uv approach]: https://github.com/astral-sh/uv/blob/4269f889bb57b3dd80fd3158c3fac7921592dd5e/crates/uv/src/lib.rs#L1289-L1311
 
-## User Guide
+## User Guide (Draft)
 
 A `jj-work` workspace is just a normal `jj` workspace that is located in a child
 directory of a special "`jj-work` vault" directory, and has the same name as its
@@ -173,6 +189,10 @@ jj config set --repo 'x.jj-work.paths_to_symlink = ["target", ".vscode/settings.
 
 ## Tips and tricks
 
+### Dealing with stale workspaces
+
+TODO
+
 ### No main repo
 
 TODO
@@ -185,6 +205,10 @@ Where to put the vault?
 
 
 ## Development
+
+My own development usually happens on the `dev` branch, but if you are
+considering creating a PR, the default `trunk` branch is probably best as a
+base. I often force-push `dev`.
 
 Shell script-quality in places
 
