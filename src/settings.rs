@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use config::{Config, ConfigError, File, FileFormat};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 use xshell::{Shell, cmd};
 
@@ -15,6 +15,40 @@ pub enum SettingsError {
     Toml(#[from] toml::de::Error),
 }
 
+// TODO: Move some of the doc comment below here and to the README? TODO: Have
+// separate TOML keys for the vector and the mapping that are combined together.
+fn deserialize_paths<'de, D>(deserializer: D) -> Result<Vec<PathBuf>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum PathOrPaths {
+        Single(PathBuf),
+        Multiple(Vec<PathBuf>),
+    }
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum PathsFormat {
+        Vector(Vec<PathBuf>),
+        Mapping(HashMap<String, PathOrPaths>),
+    }
+
+    let format = PathsFormat::deserialize(deserializer)?;
+
+    match format {
+        PathsFormat::Vector(paths) => Ok(paths),
+        PathsFormat::Mapping(map) => Ok(map
+            .into_values()
+            .flat_map(|value| match value {
+                PathOrPaths::Single(path) => vec![path],
+                PathOrPaths::Multiple(paths) => paths,
+            })
+            .collect()),
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
@@ -22,6 +56,32 @@ pub struct Settings {
     // TODO: substitute {repo_name}
     pub vault_dir: PathBuf,
     /// Relative to the repo root
+    ///
+    /// These can be stored in a few different formats in TOML:
+    ///
+    /// - Simple array: `paths_to_symlink = ["path1", "path2"]
+    /// - A table with string or array values. This can help combine values from
+    ///   user-level and repo-level configs, since `jj` currently doesn't
+    ///   concatenate arrays when combining such values.
+    ///
+    /// For example, one can specify the list of paths as follows:
+    ///
+    /// ```toml
+    /// [x.jj-work]  # In user-level config
+    /// paths_to_symlink.user = ["path1", "path2"]
+    ///
+    /// [x.jj-work]  # In repo-level config
+    /// paths_to_symlink.repo = ["path3", "path4"]
+    /// paths_to_symlink.named_path = "path5"
+    /// ```
+    ///
+    /// The key values of this table matter only while `jj` generates the table,
+    /// and are ignored by `jj-work`. If you use the same key in user-level and
+    /// repo-level config, the values will not be appended; only the repo-level
+    /// value will be retained.
+    //
+    // TODO: Link to docs for the config crate
+    #[serde(deserialize_with = "deserialize_paths")]
     pub paths_to_symlink: Vec<PathBuf>,
     pub command: HashMap<String, Vec<String>>,
 }
