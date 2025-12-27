@@ -128,7 +128,10 @@ deleting all the tracked files from the workspace and the `.jj` dir. (TODO:
 - Put `.gitignore` in vault dir?
 - Windows (first, make it compile without symlink support, and then implement
   symlink support)
-- Better integration with Git worktrees (TODO: Link to jj issues, perhaps discuss `.git` creation)
+- Better integration with Git worktrees: [jj issue
+  #8025](https://github.com/jj-vcs/jj/issues/8052), we could also create a
+  `.git` for workspaces inside subdirs colocated repos to stop Git from
+  operating on the main repo.
 - More shells (see just below)
 
 #### Notes on implementing support for more shells
