@@ -15,9 +15,7 @@ pub enum SettingsError {
     Toml(#[from] toml::de::Error),
 }
 
-// TODO: Move some of the doc comment below here and to the README? TODO: Have
-// separate TOML keys for the vector and the mapping that are combined together.
-fn deserialize_paths<'de, D>(deserializer: D) -> Result<Vec<PathBuf>, D::Error>
+fn deserialize_paths_map<'de, D>(deserializer: D) -> Result<Vec<PathBuf>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -28,62 +26,74 @@ where
         Multiple(Vec<PathBuf>),
     }
 
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum PathsFormat {
-        Vector(Vec<PathBuf>),
-        Mapping(HashMap<String, PathOrPaths>),
-    }
+    let map: HashMap<String, PathOrPaths> = HashMap::deserialize(deserializer)?;
 
-    let format = PathsFormat::deserialize(deserializer)?;
-
-    match format {
-        PathsFormat::Vector(paths) => Ok(paths),
-        PathsFormat::Mapping(map) => Ok(map
-            .into_values()
-            .flat_map(|value| match value {
-                PathOrPaths::Single(path) => vec![path],
-                PathOrPaths::Multiple(paths) => paths,
-            })
-            .collect()),
-    }
+    Ok(map
+        .into_values()
+        .flat_map(|value| match value {
+            PathOrPaths::Single(path) => vec![path],
+            PathOrPaths::Multiple(paths) => paths,
+        })
+        .collect())
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct SettingsRaw {
+    vault_dir: PathBuf,
+    #[serde(default)]
+    paths_to_symlink: Vec<PathBuf>,
+    #[serde(default, deserialize_with = "deserialize_paths_map")]
+    paths_to_symlink_map: Vec<PathBuf>,
+    command: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Settings {
     /// Relative to the repo root, unlike the CLI option
     // TODO: substitute {repo_name}
     pub vault_dir: PathBuf,
     /// Relative to the repo root
     ///
-    /// These can be stored in a few different formats in TOML:
+    /// These can be stored in two ways in TOML:
     ///
-    /// - Simple array: `paths_to_symlink = ["path1", "path2"]
-    /// - A table with string or array values. This can help combine values from
-    ///   user-level and repo-level configs, since `jj` currently doesn't
-    ///   concatenate arrays when combining such values.
+    /// - Simple array: `paths_to_symlink = ["path1", "path2"]`
+    /// - A mapping with `paths_to_symlink_map` that has string or array values.
+    ///   This can help combine values from user-level and repo-level configs,
+    ///   since `jj` currently doesn't concatenate arrays when combining such values.
     ///
-    /// For example, one can specify the list of paths as follows:
+    /// Both formats can be used simultaneously and their values will be combined.
+    ///
+    /// For example:
     ///
     /// ```toml
     /// [x.jj-work]  # In user-level config
-    /// paths_to_symlink.user = ["path1", "path2"]
+    /// paths_to_symlink = ["path1", "path2"]
+    /// paths_to_symlink_map.user = ["path3", "path4"]
     ///
     /// [x.jj-work]  # In repo-level config
-    /// paths_to_symlink.repo = ["path3", "path4"]
-    /// paths_to_symlink.named_path = "path5"
+    /// paths_to_symlink_map.repo = ["path5", "path6"]
+    /// paths_to_symlink_map.named_path = "path7"
     /// ```
     ///
-    /// The key values of this table matter only while `jj` generates the table,
-    /// and are ignored by `jj-work`. If you use the same key in user-level and
-    /// repo-level config, the values will not be appended; only the repo-level
-    /// value will be retained.
-    //
-    // TODO: Link to docs for the config crate
-    #[serde(deserialize_with = "deserialize_paths")]
+    /// The key names in `paths_to_symlink_map` matter only while `jj` generates
+    /// the table, and are ignored by `jj-work`. If you use the same key in
+    /// user-level and repo-level config, the values will not be appended; only
+    /// the repo-level value will be retained.
     pub paths_to_symlink: Vec<PathBuf>,
     pub command: HashMap<String, Vec<String>>,
+}
+
+impl From<SettingsRaw> for Settings {
+    fn from(raw: SettingsRaw) -> Self {
+        let mut paths = raw.paths_to_symlink;
+        paths.extend(raw.paths_to_symlink_map);
+        Settings {
+            vault_dir: raw.vault_dir,
+            paths_to_symlink: paths,
+            command: raw.command,
+        }
+    }
 }
 
 impl Settings {
@@ -115,6 +125,7 @@ impl Settings {
             ))
             .add_source(config::Config::try_from(&config_from_jj)?)
             .build()?;
-        Ok(s.try_deserialize()?)
+        let raw: SettingsRaw = s.try_deserialize()?;
+        Ok(raw.into())
     }
 }
