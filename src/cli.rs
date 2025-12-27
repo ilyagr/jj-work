@@ -3,7 +3,7 @@ use crate::settings::Settings;
 
 use clap::{Parser, Subcommand};
 use clap_complete::ArgValueCandidates;
-use std::process::exit;
+use std::{path::PathBuf, process::exit};
 use xshell::Shell;
 
 // TODO repo-run
@@ -109,7 +109,7 @@ struct PathArgs {
     revision: Vec<String>,
 }
 
-fn path_command(
+fn get_or_create_workspace(
     env: &mut Environment,
     PathArgs {
         workspace_name,
@@ -117,10 +117,9 @@ fn path_command(
         create_if_missing,
         revision,
     }: &PathArgs,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<PathBuf> {
     let Some(name) = workspace_name else {
-        println!("{}", env.repo_root().display());
-        return Ok(());
+        return Ok(env.repo_root().clone());
     };
     if !allow_missing && !env.is_valid_workspace(name)? {
         if *create_if_missing {
@@ -131,7 +130,11 @@ fn path_command(
             ));
         }
     }
-    let path = env.path(name);
+    Ok(env.path(name))
+}
+
+fn path_command(env: &mut Environment, args: &PathArgs) -> anyhow::Result<()> {
+    let path = get_or_create_workspace(env, args)?;
     println!("{}", path.display());
     Ok(())
 }
