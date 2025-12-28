@@ -1,6 +1,6 @@
 # `jj-work`, a workspace manager for `jj`
 
-[Homepage](https://github.com/ilyagr/jj-work)
+[GitHub homepage](https://github.com/ilyagr/jj-work)
 
 `jj-work` is a workspace manager for [`jj`](https://jj-vcs.dev) that is meant to
 help with using [`jj` workspaces][workspaces]. `jj-work` wraps the regular [`jj
@@ -39,9 +39,7 @@ Then, you should set up the shell integration for your shell and consider
 whether you'd like to [configure `jj-work` to create symlinks in new
 workspaces](#creating-symlinks) for some of the repos you will use `jj-work` on. 
 
-### Shell integration
-
-#### Fish shell
+### Shell integration: Fish shell
 
 Simple option: Put `jj-work shell-integration fish | source` anywhere in
 your config.
@@ -59,7 +57,7 @@ end > ~/.config/fish/conf.d/jj-work.fish
 
 Then, restart `fish`, e.g. by running `exec fish`.
 
-#### Bash and Zsh
+### Shell integration: Bash and Zsh
 
 Put one of these in your config:
 
@@ -79,9 +77,9 @@ This defines the `jw` function and sets up the `jj-work` command-line
 completion, but there currently is no command-line completion for `jw`. Bash and
 Zsh are currently less tested than Fish, improvements are welcome.
 
-#### Other shells
+### Other shells
 
-TODO, see [suggestions on implementing shell support
+Proper integration is TODO, see [suggestions on implementing shell support
 below](#notes-on-implementing-support-for-more-shells).
 
 Workaround: you can use the `jj-work add` command together with commands such as
