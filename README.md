@@ -237,3 +237,11 @@ interesting ideas `jj-work` either already borrowed (e.g. the symlink creation)
 or may want to borrow in the future (e.g. tmux integration of `workmux`) in some
 form.
 
+### Others
+
+Some people use tools like [zoxide] (faster and more popular of the two options)
+or [`z.lua`][zlua] (what I happen to use, had more features last I checked a
+couple of years ago) to navigate between jj workspaces or git worktrees.
+
+[zoxide]: https://github.com/ajeetdsouza/zoxide
+[zlua]: https://github.com/skywind3000/z.lua
