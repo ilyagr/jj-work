@@ -112,16 +112,19 @@ For example, `jj-work delete space` improves on `jj workspace forget` by
 deleting all the tracked files from the workspace and the `.jj` dir. (TODO:
   Consider adding a version of this to `jj` proper)
 
-### Future Plans
+### Future Plans / TODOs
 
+- allow run templated scripts instead of simple `cd`-ing to a
+  workspace. Will reduce the need for shell integration (draft in `dev`
+  branch)
 - Better ways to handle the issue of stale workspaces. For example, nudge users
   towards creating workspaces on commits that are unlikely to interfere with
   each other.
+- Better tracking of what symlinks we created, command to create a single symlink.
 - Auto-deduplicating workspace name (e.g. add date to them)
 - `../{repo_name}-work` vault path support.
   https://crates.io/crates/tinytemplate or
   https://github.com/mitsuhiko/minijinja?
-- allow run templated scripts instead of simple `cd`-ing to a workspace. Will reduce the need for shell integration
 - tmux integration
 - Put `.gitignore` in vault dir?
 - Windows (first, make it compile without symlink support, and then implement
