@@ -229,6 +229,9 @@ I am aware of a few workspace managers for Git. (They may also be called
 
 - [wtp](https://github.com/satococoa/wtp)
 
+- [Gas Town](https://github.com/steveyegge/gastown), focused on use with Claude
+  Code specifically.
+
 The main difference between them and `jj-work` is that `jj-work` can do less,
 because it can rely on `jj` to do more. For example, Git workspace managers
 usually create Git worktrees together with a new Git branch, and expect the
