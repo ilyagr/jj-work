@@ -207,6 +207,27 @@ Probably `jj sparse set` is better. (Link to gitignore-changing issues?)
 
 Where to put the vault?
 
+## Limitations
+
+### Symlinks are not ignored correctly if `.gitignore` is too strict
+
+If `.gitignore` contains the line `/target/`, the target sub-directory is
+correctly ignored. However, a symlink `/target` that `jj-work` would create in a
+workspace is *not* ignored.
+
+Unfortunately, these kinds of `.gitignore` entries are common; it is likely
+`cargo init` creates exactly this kind of a `.gitignore` entry.
+
+See also <https://github.com/jj-vcs/jj/issues/3107>.
+
+**Solution:** Change the `.gitignore` rule to `/target` in the repo, or set up a
+*global* ignore `~/.config/git/ignore` for `/target`.
+
+**Better solutions:** ??. Perhaps `jj-work` could create a symlink for each file
+and dir of `/target/` in the workspace instead of creating one symlink for
+`/target`. This would not work perfectly if new files are created inside
+`/target`, so it wouldn't entirely replace the need to modify `.gitignore` to
+have a good experience.
 
 ## Development
 
