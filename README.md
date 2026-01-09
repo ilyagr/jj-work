@@ -253,6 +253,11 @@ I am aware of a few workspace managers for Git. (They may also be called
 - [Gas Town](https://github.com/steveyegge/gastown), focused on use with Claude
   Code specifically.
 
+- [xlaude](https://github.com/Xuanwo/xlaude), also Claude Code-focused
+
+- Even Anthropic's official Claude Code Desktop [seems to have similar
+  functionality](https://code.claude.com/docs/en/desktop#copying-files-ignored-with-gitignore)
+
 The main difference between them and `jj-work` is that `jj-work` can do less,
 because it can rely on `jj` to do more. For example, Git workspace managers
 usually create Git worktrees together with a new Git branch, and expect the
