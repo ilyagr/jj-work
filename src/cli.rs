@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::settings::Settings;
 
-use anyhow::anyhow;
+use miette::{IntoDiagnostic, miette};
 use clap::{Parser, Subcommand};
 use clap_complete::ArgValueCandidates;
 use std::{path::PathBuf, process::exit};
@@ -142,7 +142,7 @@ fn get_or_create_workspace(
         create_if_missing,
         revision,
     }: &PathArgs,
-) -> anyhow::Result<PathBuf> {
+) -> miette::Result<PathBuf> {
     let Some(name) = workspace_name else {
         return Ok(env.repo_root().clone());
     };
@@ -150,7 +150,7 @@ fn get_or_create_workspace(
         if *create_if_missing {
             env.create_workspace(name, revision)?;
         } else {
-            return Err(anyhow::anyhow!(
+            return Err(miette::miette!(
                 "Workspace '{name}' does not exist or is invalid"
             ));
         }
@@ -158,7 +158,7 @@ fn get_or_create_workspace(
     Ok(env.path(name))
 }
 
-fn path_command(env: &mut Environment, args: &PathArgs) -> anyhow::Result<()> {
+fn path_command(env: &mut Environment, args: &PathArgs) -> miette::Result<()> {
     let path = get_or_create_workspace(env, args)?;
     println!("{}", path.display());
     Ok(())
@@ -168,15 +168,15 @@ fn exec_in_command(
     env: &mut Environment,
     command_name: &str,
     args: &PathArgs,
-) -> anyhow::Result<()> {
+) -> miette::Result<()> {
     let mut command = {
         let (program, command_args) = env
             .config
             .command
             .get(command_name)
-            .ok_or_else(|| anyhow!("No command found for name {command_name}."))?
+            .ok_or_else(|| miette!("No command found for name {command_name}."))?
             .split_first()
-            .ok_or_else(|| anyhow!("Command for name {command_name} is empty"))?;
+            .ok_or_else(|| miette!("Command for name {command_name} is empty"))?;
         let mut cmd = std::process::Command::new(program);
         cmd.args(command_args);
         cmd
@@ -185,11 +185,11 @@ fn exec_in_command(
     let path = get_or_create_workspace(env, args)?;
     command.current_dir(&path);
 
-    let command_status = command.status()?;
+    let command_status = command.status().into_diagnostic()?;
     if command_status.success() {
         Ok(())
     } else {
-        Err(anyhow! {"Command `{command:?}` failed with {command_status}"})
+        Err(miette! {"Command `{command:?}` failed with {command_status}"})
     }
 }
 
@@ -229,7 +229,7 @@ mod complete {
 
     fn with_env<F>(completion_fn: F) -> Vec<CompletionCandidate>
     where
-        F: Fn(&Environment) -> Result<Vec<CompletionCandidate>, anyhow::Error>,
+        F: Fn(&Environment) -> Result<Vec<CompletionCandidate>, miette::Report>,
     {
         setup_env()
             .and_then(|env| completion_fn(&env))
@@ -263,18 +263,18 @@ mod complete {
     }
 }
 
-fn setup_env() -> anyhow::Result<Environment> {
-    let sh = Shell::new()?;
-    let config = Settings::new(&sh)?;
+fn setup_env() -> miette::Result<Environment> {
+    let sh = Shell::new().into_diagnostic()?;
+    let config = Settings::new(&sh).into_diagnostic()?;
     let env = Environment::new(&sh, config)?;
     Ok(env)
 }
 
-pub fn run(cli: Cli) -> anyhow::Result<()> {
+pub fn run(cli: Cli) -> miette::Result<()> {
     // "Early" commands, the commands that need to work outside a repo
     match cli.command {
         Commands::ShellIntegration { shell } => {
-            shell.write_script(&mut std::io::stdout())?;
+            shell.write_script(&mut std::io::stdout()).into_diagnostic()?;
             return Ok(());
         }
         Commands::Docs => {
