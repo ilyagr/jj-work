@@ -6,18 +6,25 @@ use xshell::{Shell, cmd};
 
 use crate::settings::Settings;
 
-fn get_repo_root_of_current_dir(sh: &Shell) -> anyhow::Result<PathBuf> {
-    // This is normally `repo_root/.jj/repo/config.toml`.
-    let repo_config_file: PathBuf = cmd!(sh, "jj config path --repo --ignore-working-copy")
-        .read()?
-        .into();
-    let repo_root = repo_config_file
+fn get_repo_root(workspace_root: &PathBuf) -> anyhow::Result<PathBuf> {
+    let jj_repo_path = workspace_root.join(".jj/repo");
+
+    // In a workspace, `.jj/repo` is a file containing the path to the actual
+    // repo. In the main repo, `.jj/repo` is the repo directory itself.
+    let repo_dir = if jj_repo_path.is_file() {
+        let content = std::fs::read_to_string(&jj_repo_path)?;
+        PathBuf::from(content.trim())
+    } else {
+        jj_repo_path
+    };
+
+    // repo_dir is `.jj/repo`, so two parents up is the repo root
+    let repo_root = repo_dir
         .parent()
         .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
         .ok_or(anyhow::anyhow!(
-            "Couldn't determine repo root from config file path {:?}",
-            &repo_config_file
+            "Couldn't determine repo root from repo path {:?}",
+            &repo_dir
         ))?
         .to_path_buf();
     Ok(repo_root)
@@ -50,7 +57,7 @@ impl Environment {
                 )
             })?
             .into();
-        let repo_root = get_repo_root_of_current_dir(sh)?;
+        let repo_root = get_repo_root(&workspace_root)?;
 
         let workspace_name = (repo_root != workspace_root)
             .then(|| {
@@ -195,8 +202,8 @@ impl Environment {
         if !sh.path_exists(".jj") {
             return Ok(false);
         }
-        let workspace_root = get_repo_root_of_current_dir(&sh)?;
-        Ok(workspace_root == self.repo_root)
+        let candidate_repo_root = get_repo_root(&sh.current_dir())?;
+        Ok(candidate_repo_root == self.repo_root)
     }
 
     pub fn list_workspaces(&self) -> anyhow::Result<Vec<String>> {
