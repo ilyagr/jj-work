@@ -2,6 +2,8 @@ use std::{
     io::{Write, stderr},
     path::PathBuf,
 };
+
+use anyhow::Context as _;
 use xshell::{Shell, cmd};
 
 use crate::settings::Settings;
@@ -12,7 +14,8 @@ fn get_repo_root(workspace_root: &PathBuf) -> anyhow::Result<PathBuf> {
     // In a workspace, `.jj/repo` is a file containing the path to the actual
     // repo. In the main repo, `.jj/repo` is the repo directory itself.
     let repo_dir = if jj_repo_path.is_file() {
-        let content = std::fs::read_to_string(&jj_repo_path)?;
+        let content = std::fs::read_to_string(&jj_repo_path)
+            .with_context(|| format!("Failed to read {jj_repo_path:?}"))?;
         PathBuf::from(content.trim())
     } else {
         jj_repo_path
@@ -135,10 +138,10 @@ impl Environment {
         // TODO: Check gitignores?
         for need_symlink in self.config.paths_to_symlink.iter() {
             // TODO: Windows
-            std::os::unix::fs::symlink(
-                self.repo_root.join(need_symlink),
-                workspace_path.join(need_symlink),
-            )?;
+            let source = self.repo_root.join(need_symlink);
+            let dest = workspace_path.join(need_symlink);
+            std::os::unix::fs::symlink(&source, &dest)
+                .with_context(|| format!("Failed to create symlink {dest:?} -> {source:?}"))?;
         }
         // TODO: update_stale options?
         // TODO: `echo "gitdir: /dev/null" > .git`` if colocated, or is this jj's job?
@@ -181,7 +184,8 @@ impl Environment {
                     // https://github.com/matklad/xshell/issues/106:
                     // `sh.remove_path(symlink_to_remove)?` doesn't work on
                     // symlinks that don't point to existing files
-                    std::fs::remove_file(full_path)?;
+                    std::fs::remove_file(&full_path)
+                        .with_context(|| format!("Failed to remove symlink {full_path:?}"))?;
                 }
                 _ => {
                     // TODO: Log error
