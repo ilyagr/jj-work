@@ -5,7 +5,8 @@ edition = "2024"
 license = "Apache-2.0"
 
 [dependencies]
-anyhow = "1.0.100"
+eyre = "0.6"
+color-eyre = "0.6"
 clap = { version = "4.5.53", features = ["derive", "wrap_help"] }
 clap_complete = { version = "4.5.62", features = ["unstable-dynamic"] }
 config = { version = "0.15.19", default-features = false, features = ["toml", "json", "convert-case"] }
