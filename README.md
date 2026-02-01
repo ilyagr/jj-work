@@ -37,7 +37,7 @@ cargo install --path $(jj root)
 
 Then, you should set up the shell integration for your shell and consider
 whether you'd like to [configure `jj-work` to create symlinks in new
-workspaces](#creating-symlinks) for some of the repos you will use `jj-work` on. 
+workspaces](#creating-symlinks) for some of the repos you will use `jj-work` on.
 
 ### Shell integration: Fish shell
 
@@ -176,7 +176,7 @@ workspaces `jj workspace list` shows.
 
 ### Configuration
 
-`jj-work` reads config from the `x.jj-work` table in the jj's config. 
+`jj-work` reads config from the `x.jj-work` table in the jj's config.
 
 You can see the current config with `jj-work debug`.
 
@@ -207,7 +207,17 @@ Probably `jj sparse set` is better. (Link to gitignore-changing issues?)
 
 Where to put the vault?
 
-## Limitations
+## Symlink limitations
+
+The limitations below could be fixed by jj implementing negative patterns
+to `jj sparse`. Some related proposals: [sparse v2] (a few years old
+now), [more recent discussion mentioning filesets][filesets-disc] (not
+really needed for `jj-work`).
+
+`jj-work` would then manage a negative pattern for each symlink.
+
+[sparse v2]: https://github.com/jj-vcs/jj/pull/2877
+[filesets-disc]: https://github.com/jj-vcs/jj/issues/7815
 
 ### Symlinks are not ignored correctly if `.gitignore` is too strict
 
@@ -228,6 +238,12 @@ and dir of `/target/` in the workspace instead of creating one symlink for
 `/target`. This would not work perfectly if new files are created inside
 `/target`, so it wouldn't entirely replace the need to modify `.gitignore` to
 have a good experience.
+
+### Directories with placeholder files are incompatible with symlinks
+
+A common patters is to add a file like `output/.gitkeep` to a repo, and then to gitignore
+the `output` dir, so that the directory is created automatically by git. Symlinking `output`
+with such a setup is unfortunately not supported.
 
 ## Development
 
